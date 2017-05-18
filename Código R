@@ -1,0 +1,143 @@
+saber11<- read.table(file.choose(), header = TRUE, sep=';')
+saber11
+attach(saber11)
+head(saber11)
+
+#Diagrama de dispersión con correlaciones
+saber11.num <- saber11[, c('PUNT_GLOBAL', "PUNT_MATEMATICAS","PUNT_LECTURA_CRITICA", "PUNT_C_NATURALES", "PUNT_SOCIALES_CIUDADANAS", "PUNT_INGLES")]
+
+
+# Función para dibujar los puntos y agregar la recta de regresión 
+dispersion <- function (x, y) { points(x, y, pch=20) }
+# Función para obtener la correlación 
+correlacion <- function(x, y, digits=2, prefix="", cex.cor)
+{ 
+  usr <- par("usr"); on.exit(par(usr)) 
+  par(usr = c(0, 1, 0, 1)) 
+  r <- abs(cor(x, y)) 
+  txt <- format(c(r, 0.123456789), digits=digits)[1] 
+  txt <- paste(prefix, txt, sep="") 
+  if(missing(cex.cor))  cex <- 0.8/strwidth(txt) 
+  text(0.5, 0.5, txt, cex = cex * r) 
+}
+#Gráfico
+pairs(saber11.num, upper.panel = dispersion, 
+      lower.panel = correlacion, main= "Matriz de dispersión",
+      labels = c("Puntaje global", "Puntaje Matemáticas", "Puntaje Español",
+                 "Puntaje Ciencias", "Puntaje Sociales", "Puntaje Inglés"))
+
+
+#BOXPLOTS 
+par(mfrow=c(1,1))
+boxplot(PUNT_GLOBAL ~ COLE_NATURALEZA * COLE_AREA_UBICACION,
+        data=saber11, drop=TRUE, col=c('lightblue', 'lightblue1'), 
+        Xlab='Naturaleza y ubicación del colegio', ylab='Puntaje global',
+        labels =c ("NO-R", "O-R","OT-R", "NO-U","OT-U", "O-U"),
+        cex.axis=0.8)
+
+par(mfrow=c(2,3))
+
+boxplot(PUNT_GLOBAL ~ COLE_NATURALEZA, las=1, col=c('lightblue', 'lightblue1'), 
+        main= "Naturaleza del Colegio", ylab= "Puntaje Global")
+
+boxplot(PUNT_GLOBAL ~ COLE_AREA_UBICACION, las=1, col=c('lightblue', 'lightblue1'), 
+        main= "Ubicación del Colegio", ylab= "Puntaje Global")
+
+boxplot(PUNT_GLOBAL ~ COLE_CALENDARIO, las=1, col=c('lightblue', 'lightblue1', "lightblue3"), 
+        main= "Calendario del Colegio", ylab= "Puntaje Global")
+
+boxplot(PUNT_GLOBAL ~ COLE_CARACTER, las=1, col=c('lightblue', 'lightblue1', "lightblue3", "lightblue4"), 
+        main= "Carácter del Colegio", ylab= "Puntaje Global")
+
+boxplot(PUNT_GLOBAL ~ COLE_GENERO, las=1, col=c('lightblue', 'lightblue1', "lightblue3", "lightblue4"), 
+        main= "Género del Colegio", ylab= "Puntaje Global")
+
+boxplot(PUNT_GLOBAL ~ COLE_JORNADA, las=1, col=c('lightblue', 'lightblue1', "lightblue3", "lightblue4"), 
+        main= "Jornada del Colegio", ylab= "Puntaje Global")
+
+#Histograma
+hist(PUNT_GLOBAL, breaks=100, main ="Histograma del Puntaje Global", xlab="Puntaje Global", ylab="Frecuencia", las=1, col='lightblue')
+summary(PUNT_GLOBAL)
+
+#AJUSTES
+require(gamlss)
+#modelo 1 es el que mejor ajusta
+mod1 <- fitDist(PUNT_GLOBAL,k=2,type="realplus")
+mod1$fits
+
+#Histograma y ajustadas
+par(mfrow=c(2,2))
+m1<-histDist(PUNT_GLOBAL,data=saber11,family=BCPEo,nbins=100, main = "Distribución BCPEo", xlab="Puntaje global", ylim = c(0, 0.008))
+m1
+m2<-histDist(PUNT_GLOBAL,data=saber11,family=BCCGo,nbins=100, main = "Distribución BCCGo", xlab="Puntaje global", ylim = c(0, 0.008))
+m2
+m3<-histDist(PUNT_GLOBAL,data=saber11,family=BCTo,nbins=100, main = "Distribución BCTo", xlab="Puntaje global", ylim = c(0, 0.008))
+m3
+m4<-histDist(PUNT_GLOBAL,data=saber11,family=GG,nbins=100, main = "Distribución GG", xlab="Puntaje global", ylim = c(0, 0.008))
+m4
+
+#Normalidad
+par(mfrow=c(1,2))
+m5<-histDist(PUNT_GLOBAL,data=saber11,family=NO,nbins=100, main = "Distribución Normal", xlab="Puntaje global", ylim = c(0, 0.008))
+m5
+qqnorm(PUNT_GLOBAL, main="Gráfico de normalidad", ylab="Cuantiles muestrales", xlab="Cuantiles teóricos")
+qqline(PUNT_GLOBAL, col="red")
+
+#Ajuste del mejor modelo BCPEo
+modinicial1<-gamlss(PUNT_GLOBAL~1,sigma.fo=~1,nu.formula = ~1, tau.formula = ~1, na.omit(saber11),family=BCPEo,control=gamlss.control(n.cyc=500))
+
+modinicial1
+modajustado1<-stepGAICAll.A(object=modinicial,k=2,
+                           scope=list(lower=~1,upper=~COLE_AREA_UBICACION+COLE_CALENDARIO+COLE_CARACTER+COLE_GENERO+COLE_JORNADA+COLE_NATURALEZA),
+                           sigma.scope=list(lower=~1,upper=~COLE_AREA_UBICACION+COLE_CALENDARIO+COLE_CARACTER+COLE_GENERO+COLE_JORNADA+COLE_NATURALEZA),
+                           nu.scope = list(lower=~1,upper=~COLE_AREA_UBICACION+COLE_CALENDARIO+COLE_CARACTER+COLE_GENERO+COLE_JORNADA+COLE_NATURALEZA),
+                           tau.scope = list(lower=~1,upper=~COLE_AREA_UBICACION+COLE_CALENDARIO+COLE_CARACTER+COLE_GENERO+COLE_JORNADA+COLE_NATURALEZA))
+modajustado1
+summary(modajustado1)
+
+#Este es el mejor modelo con BCPEo
+modaju1 <- gamlss(PUNT_GLOBAL ~ COLE_AREA_UBICACION+COLE_CALENDARIO+COLE_CARACTER+COLE_GENERO+COLE_JORNADA+COLE_NATURALEZA, 
+                 sigma.fo= ~ COLE_AREA_UBICACION+COLE_CALENDARIO+COLE_CARACTER+COLE_GENERO+COLE_JORNADA+COLE_NATURALEZA, 
+                 nu.formula = ~COLE_NATURALEZA + COLE_AREA_UBICACION + COLE_JORNADA +  
+                   COLE_GENERO + COLE_CARACTER, tau.formula = ~COLE_JORNADA +  
+                   COLE_NATURALEZA + COLE_GENERO, family = BCPEo, data= na.omit(saber11))
+
+modaju1
+summary(modaju1)
+
+#Normal
+modnormal <- gamlss(PUNT_GLOBAL ~ COLE_AREA_UBICACION+COLE_CALENDARIO+COLE_CARACTER+COLE_GENERO+COLE_JORNADA+COLE_NATURALEZA, 
+               sigma.fo= ~ COLE_AREA_UBICACION+COLE_CALENDARIO+COLE_CARACTER+COLE_GENERO+COLE_JORNADA+COLE_NATURALEZA, family = NO, data= na.omit(saber11))
+summary(modnormal)
+
+#BCCGo
+modinicial2<-gamlss(PUNT_GLOBAL~1,sigma.fo=~1,nu.formula = ~1, na.omit(saber11),family=BCCGo,control=gamlss.control(n.cyc=500))
+
+modinicial2
+modajustado2<-stepGAICAll.A(object=modinicial2,k=2,
+                            scope=list(lower=~1,upper=~COLE_AREA_UBICACION+COLE_CALENDARIO+COLE_CARACTER+COLE_GENERO+COLE_JORNADA+COLE_NATURALEZA),
+                            sigma.scope=list(lower=~1,upper=~COLE_AREA_UBICACION+COLE_CALENDARIO+COLE_CARACTER+COLE_GENERO+COLE_JORNADA+COLE_NATURALEZA),
+                            nu.scope = list(lower=~1,upper=~COLE_AREA_UBICACION+COLE_CALENDARIO+COLE_CARACTER+COLE_GENERO+COLE_JORNADA+COLE_NATURALEZA))
+
+modajustado2
+summary(modajustado2)
+
+#Este es el mejor modelo con BCCGo
+modaju2 <- gamlss(PUNT_GLOBAL ~ COLE_AREA_UBICACION+COLE_CALENDARIO+COLE_CARACTER+COLE_GENERO+COLE_JORNADA+COLE_NATURALEZA, 
+                  sigma.fo= ~ COLE_AREA_UBICACION+COLE_CALENDARIO+COLE_CARACTER+COLE_GENERO+COLE_JORNADA+COLE_NATURALEZA, 
+                  nu.formula = ~COLE_NATURALEZA + COLE_AREA_UBICACION + COLE_JORNADA +  
+                    COLE_GENERO + COLE_CARACTER, tau.formula = ~COLE_JORNADA +  
+                    COLE_NATURALEZA + COLE_GENERO, family = BCPEo, data= na.omit(saber11))
+
+modaju2
+summary(modaju2)
+anova(modaju1)
+anova(modaju2)
+
+#Residuales
+plot(modaju1)
+
+
+#R2 ajustado
+summary(modaju1)$adj.r.squared
+summary(modaju2)$adj.r.squared
