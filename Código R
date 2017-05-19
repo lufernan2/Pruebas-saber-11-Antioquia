@@ -1,5 +1,5 @@
-saber11<- read.table(file.choose(), header = TRUE, sep=';')
-saber11
+a<-"https://raw.githubusercontent.com/lufernan2/Pruebas-saber-11-Antioquia/master/Datos%20pruebas%20saber%2011%20Antioquia%202016-II"
+saber11 <- read.table(file=a, sep="\t", header=TRUE)
 attach(saber11)
 head(saber11)
 
@@ -136,7 +136,6 @@ anova(modaju2)
 
 #Residuales
 plot(modaju1)
-
 
 #R2 ajustado
 summary(modaju1)$adj.r.squared
